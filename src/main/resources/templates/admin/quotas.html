@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DRL Admin — Quotas</title>
+  <link rel="stylesheet" th:href="@{/drl/admin/css/admin.css}"/>
+</head>
+<body>
+  <header class="topbar">
+    <strong>DRL Admin</strong>
+    <nav>
+      <a th:href="@{/drl/admin}">Rules</a>
+      <a th:href="@{/drl/admin/quotas}" class="active">Quotas</a>
+      <form th:action="@{/drl/admin/logout}" method="post" class="inline">
+        <button type="submit" class="linkish">Logout</button>
+      </form>
+    </nav>
+  </header>
+  <main>
+    <h1>Live quota utilization</h1>
+    <p class="lede">Snapshots from the observe API (refreshes every 3s).</p>
+    <form method="get" th:action="@{/drl/admin/quotas}" class="filter">
+      <label>Identifier <input name="identifier" th:value="${selectedIdentifier}"/></label>
+      <label>Namespace <input name="namespace" th:value="${selectedNamespace}"/></label>
+      <button type="submit">Filter</button>
+    </form>
+    <table id="quota-table">
+      <thead>
+        <tr>
+          <th>Identifier</th>
+          <th>Namespace</th>
+          <th>Algorithm</th>
+          <th>Consumed</th>
+          <th>Remaining</th>
+          <th>Limit</th>
+          <th>Effective</th>
+          <th>Multiplier</th>
+          <th>Error rate</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="q : ${quotas}" th:attr="data-id=${q.identifier},data-ns=${q.namespace}">
+          <td th:text="${q.identifier}">id</td>
+          <td th:text="${q.namespace}">ns</td>
+          <td class="algo" th:text="${q.algorithm}">TOKEN_BUCKET</td>
+          <td class="consumed" th:text="${q.consumed}">0</td>
+          <td class="remaining" th:text="${q.remaining}">0</td>
+          <td class="limit" th:text="${q.limit}">0</td>
+          <td class="effective" th:text="${q.effectiveLimit}">—</td>
+          <td class="multiplier" th:text="${q.adaptiveMultiplier}">—</td>
+          <td class="error-rate" th:text="${q.downstreamErrorRate}">—</td>
+          <td class="status" th:text="${q.error} ?: 'ok'">ok</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(quotas)}">
+          <td colspan="10">No quotas to show.</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+  <script th:inline="javascript">
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const liveUrl = /*[[@{/drl/admin/quotas/live}]]*/ '/drl/admin/quotas/live';
+      async function refresh() {
+        const url = new URL(liveUrl, window.location.origin);
+        if (params.get('identifier')) url.searchParams.set('identifier', params.get('identifier'));
+        if (params.get('namespace')) url.searchParams.set('namespace', params.get('namespace'));
+        try {
+          const res = await fetch(url, { credentials: 'same-origin' });
+          if (!res.ok) return;
+          const rows = await res.json();
+          const tbody = document.querySelector('#quota-table tbody');
+          if (!tbody || !Array.isArray(rows) || rows.length === 0) return;
+          tbody.innerHTML = rows.map(q => `
+            <tr>
+              <td>${esc(q.identifier)}</td>
+              <td>${esc(q.namespace)}</td>
+              <td>${esc(q.algorithm)}</td>
+              <td>${val(q.consumed)}</td>
+              <td>${val(q.remaining)}</td>
+              <td>${val(q.limit)}</td>
+              <td>${val(q.effectiveLimit)}</td>
+              <td>${val(q.adaptiveMultiplier)}</td>
+              <td>${val(q.downstreamErrorRate)}</td>
+              <td>${esc(q.error || 'ok')}</td>
+            </tr>`).join('');
+        } catch (e) { /* ignore poll errors */ }
+      }
+      function val(v) { return v == null ? '—' : esc(String(v)); }
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+      setInterval(refresh, 3000);
+    })();
+  </script>
+</body>
+</html>

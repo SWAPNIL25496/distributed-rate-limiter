@@ -11,6 +11,7 @@ import com.example.ratelimiter.limiter.QuotaScriptExecutor;
 import com.example.ratelimiter.limiter.ShardSupport;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,16 +24,19 @@ public class QuotaService {
 
     private final RateLimitRuleService ruleService;
     private final QuotaScriptExecutor quotaScriptExecutor;
+    private final AdaptiveStateStore adaptiveStateStore;
     private final AppProperties appProperties;
     private final Clock clock;
 
     public QuotaService(
             RateLimitRuleService ruleService,
             QuotaScriptExecutor quotaScriptExecutor,
+            AdaptiveStateStore adaptiveStateStore,
             AppProperties appProperties,
             Clock clock) {
         this.ruleService = ruleService;
         this.quotaScriptExecutor = quotaScriptExecutor;
+        this.adaptiveStateStore = adaptiveStateStore;
         this.appProperties = appProperties;
         this.clock = clock;
     }
@@ -50,7 +54,9 @@ public class QuotaService {
                         "No enabled rate limit rule for identifier and namespace"));
 
         int shards = appProperties.rateLimit().counterShards();
-        int globalLimit = baseLimit(rule);
+        int baseLimit = baseLimit(rule);
+        AdaptiveView adaptive = resolveAdaptive(rule, id, ns, baseLimit);
+        int observeLimit = adaptive.effectiveLimit() != null ? adaptive.effectiveLimit() : baseLimit;
         Instant now = clock.instant();
 
         int totalRemaining = 0;
@@ -58,7 +64,7 @@ public class QuotaService {
         Instant resetAt = null;
 
         for (int shardId = 0; shardId < shards; shardId++) {
-            int shardLimit = ShardSupport.shardLimit(globalLimit, shardId, shards);
+            int shardLimit = ShardSupport.shardLimit(observeLimit, shardId, shards);
             ObserveResult shard = observeShard(rule, id, ns, shardId, shardLimit, now);
             totalRemaining += shard.remaining();
             totalConsumed += shard.consumed();
@@ -68,16 +74,42 @@ public class QuotaService {
         }
 
         log.info(
-                "Observe identifier={} namespace={} algorithm={} consumed={} remaining={} limit={}",
+                "Observe identifier={} namespace={} algorithm={} consumed={} remaining={} limit={} effectiveLimit={}",
                 id,
                 ns,
                 rule.algorithm(),
                 totalConsumed,
                 totalRemaining,
-                globalLimit);
+                baseLimit,
+                adaptive.effectiveLimit());
 
         return QuotaResponse.of(
-                id, ns, rule.algorithm(), totalConsumed, totalRemaining, globalLimit, resetAt);
+                id,
+                ns,
+                rule.algorithm(),
+                totalConsumed,
+                totalRemaining,
+                baseLimit,
+                adaptive.effectiveLimit(),
+                adaptive.multiplier(),
+                adaptive.errorRate(),
+                resetAt);
+    }
+
+    private AdaptiveView resolveAdaptive(
+            RuleCache.CachedRule rule, String identifier, String namespace, int baseLimit) {
+        if (!rule.adaptiveEnabled()) {
+            return AdaptiveView.absent();
+        }
+        Optional<AdaptiveStateStore.AdaptiveState> state = adaptiveStateStore.get(identifier, namespace);
+        if (state.isEmpty()) {
+            return AdaptiveView.absent();
+        }
+        AdaptiveStateStore.AdaptiveState adapt = state.get();
+        return new AdaptiveView(
+                adapt.multiplier(),
+                adapt.errorRate(),
+                AdaptiveLimits.effectiveLimit(baseLimit, adapt.multiplier()));
     }
 
     private ObserveResult observeShard(
@@ -115,5 +147,11 @@ public class QuotaService {
             throw new BadRequestException(field + " is required");
         }
         return value.trim();
+    }
+
+    private record AdaptiveView(Double multiplier, Double errorRate, Integer effectiveLimit) {
+        static AdaptiveView absent() {
+            return new AdaptiveView(null, null, null);
+        }
     }
 }

@@ -42,7 +42,7 @@ class RateLimitRuleServiceTest {
         when(repository.save(any(RateLimitRule.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.create(new RuleRequest(
-                "tenant-42", "checkout", RateLimitAlgorithm.TOKEN_BUCKET, 100, 10.0, null, null, true));
+                "tenant-42", "checkout", RateLimitAlgorithm.TOKEN_BUCKET, 100, 10.0, null, null, true, true));
 
         ArgumentCaptor<RateLimitRule> captor = ArgumentCaptor.forClass(RateLimitRule.class);
         verify(repository).save(captor.capture());
@@ -61,6 +61,7 @@ class RateLimitRuleServiceTest {
                         10.0,
                         null,
                         null,
+                        true,
                         true)))
                 .isInstanceOf(ConflictException.class);
         verify(repository, never()).save(any());
@@ -69,12 +70,12 @@ class RateLimitRuleServiceTest {
     @Test
     void createTokenBucketRequiresBurstAndRefill() {
         assertThatThrownBy(() -> service.create(new RuleRequest(
-                        "t", "n", RateLimitAlgorithm.TOKEN_BUCKET, null, 10.0, null, null, true)))
+                        "t", "n", RateLimitAlgorithm.TOKEN_BUCKET, null, 10.0, null, null, true, true)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("burstCapacity");
 
         assertThatThrownBy(() -> service.create(new RuleRequest(
-                        "t", "n", RateLimitAlgorithm.TOKEN_BUCKET, 10, 0.0, null, null, true)))
+                        "t", "n", RateLimitAlgorithm.TOKEN_BUCKET, 10, 0.0, null, null, true, true)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("refillPerSecond");
     }
@@ -82,12 +83,12 @@ class RateLimitRuleServiceTest {
     @Test
     void createSlidingWindowRequiresLimitAndWindow() {
         assertThatThrownBy(() -> service.create(new RuleRequest(
-                        "t", "n", RateLimitAlgorithm.SLIDING_WINDOW, null, null, null, 60, true)))
+                        "t", "n", RateLimitAlgorithm.SLIDING_WINDOW, null, null, null, 60, true, true)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("limit");
 
         assertThatThrownBy(() -> service.create(new RuleRequest(
-                        "t", "n", RateLimitAlgorithm.SLIDING_WINDOW, null, null, 100, 0, true)))
+                        "t", "n", RateLimitAlgorithm.SLIDING_WINDOW, null, null, 100, 0, true, true)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("windowSeconds");
     }
@@ -117,7 +118,8 @@ class RateLimitRuleServiceTest {
                         10.0,
                         null,
                         null,
-                        false));
+                        false,
+                        true));
 
         verify(ruleCache).evict("tenant-42", "checkout");
         verify(ruleCache, never()).put(any());

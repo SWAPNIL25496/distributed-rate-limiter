@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DRL Admin — Login</title>
+  <link rel="stylesheet" th:href="@{/drl/admin/css/admin.css}"/>
+</head>
+<body class="login-page">
+  <main class="login-panel">
+    <h1>Distributed Rate Limiter</h1>
+    <p class="lede">Enter the service API key to open the admin console.</p>
+    <p th:if="${error}" class="error">Invalid API key.</p>
+    <form method="post" th:action="@{/drl/admin/login}">
+      <label for="apiKey">API key</label>
+      <input id="apiKey" name="apiKey" type="password" autocomplete="current-password" required autofocus/>
+      <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>

@@ -50,6 +50,9 @@ public class RateLimitRule {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "adaptive_enabled", nullable = false)
+    private boolean adaptiveEnabled = true;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -134,6 +137,14 @@ public class RateLimitRule {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isAdaptiveEnabled() {
+        return adaptiveEnabled;
+    }
+
+    public void setAdaptiveEnabled(boolean adaptiveEnabled) {
+        this.adaptiveEnabled = adaptiveEnabled;
     }
 
     public Instant getCreatedAt() {

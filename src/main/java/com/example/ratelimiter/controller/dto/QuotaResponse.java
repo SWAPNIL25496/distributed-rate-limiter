@@ -4,7 +4,7 @@ import com.example.ratelimiter.domain.RateLimitAlgorithm;
 import java.time.Instant;
 
 /**
- * Observe response. Adaptive fields are nullable until Phase 8 (omit or null OK).
+ * Observe response including adaptive fields (nullable when no adapt key / adaptive disabled).
  */
 public record QuotaResponse(
         String identifier,
@@ -25,6 +25,9 @@ public record QuotaResponse(
             int consumed,
             int remaining,
             int limit,
+            Integer effectiveLimit,
+            Double adaptiveMultiplier,
+            Double downstreamErrorRate,
             Instant resetAt) {
         return new QuotaResponse(
                 identifier,
@@ -33,9 +36,9 @@ public record QuotaResponse(
                 consumed,
                 remaining,
                 limit,
-                null,
-                null,
-                null,
+                effectiveLimit,
+                adaptiveMultiplier,
+                downstreamErrorRate,
                 resetAt);
     }
 }

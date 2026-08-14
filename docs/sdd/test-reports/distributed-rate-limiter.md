@@ -45,3 +45,39 @@ Notes: Unit-level engine coverage; no Docker needed for this phase.
 | `./mvnw test` | **PASS** — BUILD SUCCESS, 57 tests, 0 failures |
 | Observe API (MockMvc) | **PASS** — `QuotaControllerTest` (5 tests) |
 | ConcurrentEvaluateIT | **CI-pending** (no Docker in this container) |
+
+## Phase 6 — README / REFLECTION / architecture (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| Doc review (AC-11–13) | **PASS** — `README.md`, `REFLECTION.md`, `docs/architecture/request-lifecycle.md` |
+| Residual §4 excludes UI/adaptive/DO | **PASS** — deferred to Phases 7–9 |
+| `./mvnw test` (post batch 8→7→9→6) | **PASS** — BUILD SUCCESS, **83** tests, 0 failures |
+
+Notes: Documentation-only phase; suite green after Phases 7–9 landed in same batch.
+
+## Phase 7 — Admin Thymeleaf UI (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — included in **83**/0 batch result |
+| AC-15 AdminUiTest (Surefire / MockMvc) | **PASS** — `AdminUiTest` (login session, rules/quotas pages, public CSS) |
+| Admin IT (Docker) | **CI-pending** (no Docker in this container) |
+
+## Phase 8 — Adaptive limits (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — included in **83**/0 batch result |
+| Unit + MockMvc (AC-16 / AC-17) | **PASS** — `AdaptiveLimitsTest`, `AdaptiveFeedbackServiceTest`, `AdaptiveFeedbackControllerTest`, `QuotaServiceTest` |
+| AdaptiveIT (Testcontainers) | **CI-pending** (no Docker in this container; Failsafe / `./mvnw verify`) |
+
+## Phase 9 — DigitalOcean deploy artifacts (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| Doc review (AC-18) | **PASS** — `.do/app.yaml`, `deploy/digitalocean/README.md`, `docs/architecture/digitalocean.md` |
+| `./mvnw test` (no DO account required) | **PASS** — BUILD SUCCESS, **83** tests, 0 failures |
+| Live DO deploy / cross-instance demo | **Operator / CI-pending** |
+
+Notes: Batch order executed 8→7→9→6; single Surefire evidence row applies across Phases 6–9.

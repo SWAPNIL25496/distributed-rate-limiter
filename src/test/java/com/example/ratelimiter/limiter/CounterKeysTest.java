@@ -13,6 +13,8 @@ class CounterKeysTest {
                 .isEqualTo("rl:v1:tb:tenant-42:checkout:0");
         assertThat(CounterKeys.slidingWindow("tenant-42", "checkout", 0))
                 .isEqualTo("rl:v1:sw:tenant-42:checkout:0");
+        assertThat(CounterKeys.adaptive("tenant-42", "checkout"))
+                .isEqualTo("rl:v1:adapt:tenant-42:checkout");
     }
 }
 

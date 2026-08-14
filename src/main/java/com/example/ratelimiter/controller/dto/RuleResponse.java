@@ -14,6 +14,7 @@ public record RuleResponse(
         Integer limit,
         Integer windowSeconds,
         boolean enabled,
+        boolean adaptiveEnabled,
         Instant createdAt,
         Instant updatedAt) {
 
@@ -28,6 +29,7 @@ public record RuleResponse(
                 rule.getLimitCount(),
                 rule.getWindowSeconds(),
                 rule.isEnabled(),
+                rule.isAdaptiveEnabled(),
                 rule.getCreatedAt(),
                 rule.getUpdatedAt());
     }

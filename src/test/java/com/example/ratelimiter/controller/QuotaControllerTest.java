@@ -48,6 +48,9 @@ class QuotaControllerTest {
                         83,
                         17,
                         100,
+                        null,
+                        null,
+                        null,
                         RESET));
 
         mockMvc.perform(get("/api/v1/quotas/tenant-42")

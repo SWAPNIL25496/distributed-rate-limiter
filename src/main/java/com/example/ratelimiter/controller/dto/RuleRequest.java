@@ -13,5 +13,6 @@ public record RuleRequest(
         Double refillPerSecond,
         Integer limit,
         Integer windowSeconds,
-        Boolean enabled) {
+        Boolean enabled,
+        Boolean adaptiveEnabled) {
 }

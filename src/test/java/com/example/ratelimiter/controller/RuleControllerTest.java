@@ -225,6 +225,7 @@ class RuleControllerTest {
                 null,
                 null,
                 true,
+                true,
                 NOW,
                 NOW);
     }
@@ -239,6 +240,7 @@ class RuleControllerTest {
                 null,
                 1000,
                 60,
+                true,
                 true,
                 NOW,
                 NOW);

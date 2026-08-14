@@ -3,18 +3,19 @@
 > Production-shaped deploy path (Phase 9). Postgres and Redis are **deployed separately**; apps connect with host / username / password from machine env.  
 > SDD: [`../sdd/distributed-rate-limiter.md`](../sdd/distributed-rate-limiter.md)  
 > ADR: [0009](../adr/0009-digitalocean-deploy.md)  
-> Runbook (Phase 9): `deploy/digitalocean/README.md` + App Platform / Droplet spec
+> Runbook: [`../../deploy/digitalocean/README.md`](../../deploy/digitalocean/README.md)  
+> App Platform spec: [`../../.do/app.yaml`](../../.do/app.yaml) (Dockerfile build — Java is not a buildpack language)
 
 ## Topology
 
 ```mermaid
 flowchart TB
   Internet[Internet_clients]
-  LB[HTTPS_LB]
-  App1[App_machine_1]
-  App2[App_machine_2]
-  Pg[(Separate_Postgres_16)]
-  Redis[(Separate_Redis_7)]
+  LB[HTTPS_LB_App_Platform]
+  App1[App_instance_1]
+  App2[App_instance_2]
+  Pg[(Separate_Managed_Postgres_16)]
+  Redis[(Separate_Managed_Redis_7)]
 
   Internet --> LB
   LB --> App1
@@ -30,11 +31,12 @@ flowchart TB
 | Component | Choice |
 |-----------|--------|
 | App instances | **2** (same image; **different** from DB/Redis hosts) |
-| Edge | HTTPS load balancer |
+| Edge | App Platform HTTPS load balancer |
+| Build | Repo root `Dockerfile` (`dockerfile_path`) — buildpacks do **not** support Java |
 | Database | **Separately** provisioned PostgreSQL 16 (e.g. DO Managed DB) |
 | Cache / counters | **Separately** provisioned Redis 7 (e.g. DO Managed Redis) |
 | Health check | `GET /actuator/health` |
-| Secrets on each app machine | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD`, `APP_API_KEY` |
+| Secrets on each app instance | `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`, `SPRING_DATA_REDIS_PASSWORD`, `APP_API_KEY` |
 
 Apps do **not** co-host production Postgres/Redis. Local Compose may run optional DB/Redis containers, still using the same env variable names.
 
@@ -44,6 +46,6 @@ Apps do **not** co-host production Postgres/Redis. Local Compose may run optiona
 2. Deploy **2** app instances with those env values (operator-run when credentials exist).  
 3. Create a rule via the public HTTPS URL.  
 4. Hammer `POST /api/v1/evaluate` via the LB; assert shared Redis quota across instances.  
-5. Optionally observe via quotas API or Thymeleaf `/drl/admin`.
+5. Optionally observe via quotas API, adaptive feedback, or Thymeleaf `/drl/admin`.
 
 CI does **not** require a DigitalOcean account (Testcontainers covers IT).

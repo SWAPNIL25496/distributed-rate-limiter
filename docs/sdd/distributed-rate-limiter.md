@@ -678,10 +678,10 @@ sequenceDiagram
 | 3 | Pure algorithm engines + unit tests | Verified | - | pure TB+SW engines; 33 tests green; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
 | 4 | Evaluate API + Lua + multi-replica path | Verified | - | evaluate+Lua; 50 tests green; EvaluateIT CI-pending |
 | 5 | Observe API + concurrency/contention tests | Verified | - | observe API; 57 tests green; ConcurrentEvaluateIT CI-pending |
-| 6 | README / REFLECTION / architecture finalize / CI green | Not Started | - | Core docs; note Phases 7–9 upcoming |
-| 7 | Admin Thymeleaf UI + live quota utilization | Not Started | - | ADR 0007 |
-| 8 | Adaptive limits feedback + evaluate multiplier | Not Started | - | ADR 0008 |
-| 9 | DigitalOcean deploy artifacts + cross-instance demo docs | Not Started | - | ADR 0009; operator-run live deploy |
+| 6 | README / REFLECTION / architecture finalize / CI green | Verified | - | README+REFLECTION; 83 tests green after batch; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
+| 7 | Admin Thymeleaf UI + live quota utilization | Verified | - | Thymeleaf `/drl/admin`; session API key; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
+| 8 | Adaptive limits feedback + evaluate multiplier | Verified | - | adaptive feedback + evaluate/observe multipliers; AdaptiveIT CI-pending; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
+| 9 | DigitalOcean deploy artifacts + cross-instance demo docs | Verified | - | App Platform Dockerfile runbook + `.do/app.yaml`; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
 
 ## Phases
 

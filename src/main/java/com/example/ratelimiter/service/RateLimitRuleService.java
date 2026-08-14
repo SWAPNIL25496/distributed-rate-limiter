@@ -142,6 +142,7 @@ public class RateLimitRuleService {
         rule.setNamespace(request.namespace().trim());
         rule.setAlgorithm(request.algorithm());
         rule.setEnabled(request.enabled() == null || request.enabled());
+        rule.setAdaptiveEnabled(request.adaptiveEnabled() == null || request.adaptiveEnabled());
 
         if (request.algorithm() == RateLimitAlgorithm.TOKEN_BUCKET) {
             rule.setBurstCapacity(request.burstCapacity());

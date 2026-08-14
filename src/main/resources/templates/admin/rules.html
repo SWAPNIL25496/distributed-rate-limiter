@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DRL Admin — Rules</title>
+  <link rel="stylesheet" th:href="@{/drl/admin/css/admin.css}"/>
+</head>
+<body>
+  <header class="topbar">
+    <strong>DRL Admin</strong>
+    <nav>
+      <a th:href="@{/drl/admin}" class="active">Rules</a>
+      <a th:href="@{/drl/admin/quotas}">Quotas</a>
+      <form th:action="@{/drl/admin/logout}" method="post" class="inline">
+        <button type="submit" class="linkish">Logout</button>
+      </form>
+    </nav>
+  </header>
+  <main>
+    <h1>Rules / tenants</h1>
+    <p class="lede">Configured rate-limit rules (Postgres system of record).</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Identifier</th>
+          <th>Namespace</th>
+          <th>Algorithm</th>
+          <th>Params</th>
+          <th>Enabled</th>
+          <th>Adaptive</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="rule : ${rules}">
+          <td th:text="${rule.id}">1</td>
+          <td th:text="${rule.identifier}">tenant</td>
+          <td th:text="${rule.namespace}">ns</td>
+          <td th:text="${rule.algorithm}">TOKEN_BUCKET</td>
+          <td>
+            <span th:if="${rule.algorithm.name() == 'TOKEN_BUCKET'}"
+                  th:text="|burst=${rule.burstCapacity}, refill=${rule.refillPerSecond}/s|">params</span>
+            <span th:if="${rule.algorithm.name() == 'SLIDING_WINDOW'}"
+                  th:text="|limit=${rule.limit}, window=${rule.windowSeconds}s|">params</span>
+          </td>
+          <td th:text="${rule.enabled}">true</td>
+          <td th:text="${rule.adaptiveEnabled}">true</td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(rules)}">
+          <td colspan="7">No rules yet. Create via <code>POST /api/v1/rules</code> or Swagger.</td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

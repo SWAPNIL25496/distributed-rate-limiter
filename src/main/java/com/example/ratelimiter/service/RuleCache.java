@@ -24,7 +24,8 @@ public interface RuleCache {
             Double refillPerSecond,
             Integer limit,
             Integer windowSeconds,
-            boolean enabled) {
+            boolean enabled,
+            boolean adaptiveEnabled) {
 
         public static CachedRule from(RateLimitRule rule) {
             return new CachedRule(
@@ -36,7 +37,8 @@ public interface RuleCache {
                     rule.getRefillPerSecond(),
                     rule.getLimitCount(),
                     rule.getWindowSeconds(),
-                    rule.isEnabled());
+                    rule.isEnabled(),
+                    rule.isAdaptiveEnabled());
         }
     }
 }
