@@ -11,3 +11,11 @@
 | Dockerfile build | **CI-pending / operator** |
 
 Notes: ECS structured logging observed in test output. API-key filter covers 401 + public health/swagger.
+
+## Phase 2 — Rules CRUD + Redis write-through (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — BUILD SUCCESS, 25 tests, 0 failures |
+| AC-2 rules API (MockMvc) | **PASS** — `RuleControllerTest` |
+| AC-1 Postgres→Redis write-through IT | **CI-pending** (no Docker in this container) |

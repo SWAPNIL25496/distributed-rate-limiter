@@ -674,7 +674,7 @@ sequenceDiagram
 | Phase | Title | Status | PR | Notes |
 |-------|-------|--------|----|-------|
 | 1 | Scaffold Boot + Compose + Flyway + health + CI skeleton | Verified | - | Java 21 + Boot 4.0.7; 9 tests green; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md); Dockerfile/Compose/IT = CI-pending |
-| 2 | Rule CRUD + Postgres + Redis write-through cache | Not Started | - | |
+| 2 | Rule CRUD + Postgres + Redis write-through cache | Verified | - | CRUD + Redis write-through; 25 tests green; ITs CI-pending; report test-reports/distributed-rate-limiter.md |
 | 3 | Pure algorithm engines + unit tests | Not Started | - | |
 | 4 | Evaluate API + Lua + multi-replica path | Not Started | - | |
 | 5 | Observe API + concurrency/contention tests | Not Started | - | |
