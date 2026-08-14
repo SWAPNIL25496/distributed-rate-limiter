@@ -26,6 +26,6 @@ Personal SDD-enabled repo. Tracking is branch / PR only. **Push the phase branch
 
 ## Stack reminders
 
-Java 25, Spring Boot 4.0.x, Maven, package-by-layer (`com.example.ratelimiter` incl. `web/`), Postgres 16 + JPA + Flyway (rules SoR), Redis 7 (rule cache + **shard-ready** counters + adaptive keys, Lua evaluate), REST + springdoc, Thymeleaf admin UI (`/drl/admin`), adaptive feedback API, `X-API-Key`, **2** API replicas, Postgres/Redis **deployed separately** and connected via env host/username/password, DigitalOcean artifacts (Phase 9), no Prometheus / no JWT / no GraphQL in v1.
+Java 21 (LTS), Spring Boot 4.0.x, Maven, package-by-layer (`com.example.ratelimiter` incl. `web/`), Postgres 16 + JPA + Flyway (rules SoR), Redis 7 (rule cache + **shard-ready** counters + adaptive keys, Lua evaluate), REST + springdoc, Thymeleaf admin UI (`/drl/admin`), adaptive feedback API, `X-API-Key`, **2** API replicas, Postgres/Redis **deployed separately** and connected via env host/username/password, DigitalOcean artifacts (Phase 9), no Prometheus / no JWT / no GraphQL in v1.
 
 Phases **7–9** (in v1): admin Thymeleaf UI → adaptive limits → DigitalOcean deploy docs/spec.

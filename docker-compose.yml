@@ -1,0 +1,86 @@
+# Local two-replica proof: api1 (host 8080) and api2 (host 8081) run the same image against
+# shared state, which is what makes cross-instance rate limiting observable.
+#
+# The postgres and redis services are a convenience only. Every connection detail is an
+# environment variable, so pointing SPRING_DATASOURCE_URL / SPRING_DATA_REDIS_HOST at external
+# hosts and running `docker compose up --no-deps api1 api2` uses those instead — matching the
+# production shape where the datastores are deployed separately from the app machines.
+#
+# Secrets here are `change-me` placeholders. Override them; never commit real values.
+
+name: distributed-rate-limiter
+
+x-api-connection-env: &api-connection-env
+  APP_API_KEY: ${APP_API_KEY:-change-me}
+  SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/ratelimiter}
+  SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-ratelimiter}
+  SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-change-me}
+  SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST:-redis}
+  SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT:-6379}
+  SPRING_DATA_REDIS_PASSWORD: ${SPRING_DATA_REDIS_PASSWORD:-change-me}
+
+x-api-healthcheck: &api-healthcheck
+  test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 60s
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ratelimiter
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME:-ratelimiter}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-change-me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--requirepass", "${SPRING_DATA_REDIS_PASSWORD:-change-me}"]
+    environment:
+      REDISCLI_AUTH: ${SPRING_DATA_REDIS_PASSWORD:-change-me}
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api1:
+    image: distributed-rate-limiter:local
+    build: .
+    environment: *api-connection-env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+
+  api2:
+    image: distributed-rate-limiter:local
+    build: .
+    environment: *api-connection-env
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck: *api-healthcheck
+
+volumes:
+  postgres-data:

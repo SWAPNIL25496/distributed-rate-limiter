@@ -6,7 +6,7 @@ globs:
 
 # Java conventions
 
-- Target **Java 25**; prefer modern APIs over legacy equivalents when clear.
+- Target **Java 21 (LTS)**; prefer modern APIs (records, sealed types, pattern matching, virtual threads) over legacy equivalents when clear. Do not use language or API features newer than 21.
 - Prefer immutability for value objects; avoid public mutable fields.
 - Use clear package-by-layer boundaries; do not put business logic in controllers.
 - Fail fast on invalid input at API boundaries with consistent error responses.

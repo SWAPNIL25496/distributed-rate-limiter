@@ -14,6 +14,7 @@ The PDF asks for DigitalOcean deployment with ≥2 app replicas behind a load ba
 |------|------|
 | Datastores | **Separate** Managed PostgreSQL + Managed Redis (or equivalent separately hosted instances) |
 | App tier | **2** instances behind HTTPS LB / App Platform load balancing |
+| Build source | **App Platform + repo `Dockerfile`** — App Platform's buildpacks support Node/Python/Ruby/PHP/Go/.NET but **not Java**, so a Dockerfile is mandatory for Spring Boot. DigitalOcean builds it from the GitHub repo, so no local Docker daemon is required to deploy |
 | Connection | Env on app machines: `SPRING_DATASOURCE_URL` / `USERNAME` / `PASSWORD`, `SPRING_DATA_REDIS_HOST` / `PORT` / `PASSWORD`, `APP_API_KEY` |
 | Deliverables | `deploy/digitalocean/README.md` + App Platform/Droplet spec; [`docs/architecture/digitalocean.md`](../architecture/digitalocean.md) |
 | Health | `/actuator/health` |
@@ -31,6 +32,8 @@ Phase 9 ships artifacts + checklist, not a mandatory CI cloud deploy.
 
 ## Alternatives considered
 
+- **Droplets + JRE 21 + `systemd` behind a DO Load Balancer** — needs no Docker anywhere and satisfies the ≥2-replica bar, but requires manual provisioning per machine; rejected in favour of App Platform's managed build/deploy.
+- **App Platform buildpacks (no Dockerfile)** — not possible: Java is not a supported buildpack language.
 - **Bundling Postgres/Redis on the same Droplet as the app** — rejected for production shape; optional only for local Compose convenience.
 - **Credentials baked into image / committed `.env`** — rejected; secrets via machine/App Platform env only.
 - **CI auto-deploy to DO** — rejected; no DO account required in CI.

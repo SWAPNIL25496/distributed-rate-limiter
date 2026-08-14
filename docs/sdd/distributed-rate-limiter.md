@@ -34,7 +34,7 @@ Architecturally: **Postgres** is the durable system of record for rules; **Redis
 | PostgreSQL 16 | Rules SoR | Flyway-owned schema; JPA access |
 | Redis 7 | Rule cache + quota counters + adaptive keys | Lua for atomic evaluate / observe |
 | DigitalOcean App Platform | Public HTTPS LB → ≥2 app instances | Managed Postgres + Managed Redis; operator-run deploy |
-| GitHub Actions | `./mvnw test` on push | CI gate (no DO credentials required) |
+| GitHub Actions | `./mvnw verify` on push | CI gate; **only** place Testcontainers ITs run (no DO credentials required) |
 
 ## Scope
 
@@ -42,7 +42,7 @@ Architecturally: **Postgres** is the durable system of record for rules; **Redis
 
 | Area | Locked choice |
 |------|----------------|
-| Language / build | **Java 25**, Maven (`mvnw`), package-by-layer |
+| Language / build | **Java 21 (LTS)**, Maven (`mvnw`), package-by-layer |
 | Framework | **Spring Boot 4.0.x** (latest 4.0 patch at Phase 1 scaffold) |
 | Base package | `com.example.ratelimiter` |
 | Public API | REST + **springdoc** OpenAPI/Swagger ([ADR 0005](../adr/0005-rest-api-only.md)) |
@@ -62,10 +62,11 @@ Architecturally: **Postgres** is the durable system of record for rules; **Redis
 | Local run | Docker Compose: **optional** local Postgres + Redis containers **or** point at already-running hosts; **2 API replicas**; all connection via **env** (host / username / password) |
 | Datastore topology | **Postgres and Redis deployed separately** from app machines; apps never embed DB credentials in the image |
 | Connection config | Env on each app machine: Postgres host/URL + username + password; Redis host + port + password; `APP_API_KEY` ([locked env table](#connection-env-locked)) |
-| Production-shaped deploy | DigitalOcean: **separate** Managed Postgres + Managed Redis; **2** app instances + HTTPS LB wire via secrets ([ADR 0009](../adr/0009-digitalocean-deploy.md)) |
+| Production-shaped deploy | DigitalOcean **App Platform + `Dockerfile`** (App Platform buildpacks do **not** support Java, so a Dockerfile is required); **separate** Managed Postgres + Managed Redis; **2** app instances + HTTPS LB wired via secrets ([ADR 0009](../adr/0009-digitalocean-deploy.md)) |
 | Observability | Structured application logs; observe API; admin UI utilization; **no Prometheus** in v1 |
 | Tests | JUnit 5, MockMvc, Mockito; Testcontainers Postgres + Redis; concurrent evaluate test; adaptive tighten/relax unit + IT |
-| CI | GitHub Actions on push → `./mvnw test` (does **not** require a DO account) |
+| Test split | **Surefire** runs `*Test` (no Docker needed) on `./mvnw test`; **Failsafe** runs `*IT` (Testcontainers) on `./mvnw verify`. The dev container has **no Docker**, so ITs are **CI-verified** ([see below](#docker-availability-locked)) |
+| CI | GitHub Actions on push → **`./mvnw verify`** (unit + Testcontainers ITs; does **not** require a DO account) |
 | Docs | README; REFLECTION (races, limits, residual backlog); Mermaid architecture + DO topology |
 | Delivery | One commit per verified phase, **pushed after every phase** (CI runs per increment); PRs only when asked |
 
@@ -84,6 +85,19 @@ com.example.ratelimiter
   ├── config/
   └── exception/
 ```
+
+### Docker availability (locked)
+
+The dev container has **no Docker daemon** (`docker` is absent from `PATH`; `apt` cannot install it because `/var/lib` is read-only, and a static-binary daemon was rejected). Consequences, locked:
+
+| Concern | Rule |
+|---------|------|
+| Local `./mvnw test` | Must pass with **no Docker** — Surefire `*Test` only (unit, MockMvc, context load) |
+| Testcontainers ITs | Named `*IT`, run by **Failsafe** on `./mvnw verify`; executed on **GitHub Actions runners** (Docker present) |
+| Compose two-replica proof (AC-9) | **Cannot** be run locally; verify in CI or on an operator machine with Docker; never claim it verified from this container |
+| Test reports | Docker-dependent criteria (AC-1, AC-5, AC-6, AC-8, AC-9) are marked **Verified (CI)**, not verified locally |
+
+This makes the push-after-every-phase policy load-bearing: a phase touching Postgres/Redis behaviour is only fully verified once CI runs it.
 
 ### Connection env (locked)
 
@@ -248,7 +262,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | AC-7 | Token bucket respects burst then sustained refill (unit tests with injectable clock/time) | Unit tests |
 | AC-8 | Sliding window respects limit over `window_seconds` (unit + Lua path) | Unit + IT |
 | AC-9 | `docker compose up` (default: bundled local datastores) brings up postgres + redis + api1 + api2 healthily; same file works against external hosts via env | Compose smoke |
-| AC-10 | GitHub Actions runs `./mvnw test` on push | Workflow file + **green CI on every phase push** (first real run: Phase 1) |
+| AC-10 | GitHub Actions runs `./mvnw verify` on push | Workflow file + **green CI on every phase push** (first real run: Phase 1) |
 | AC-11 | Architecture Mermaid present under `docs/architecture/` | Phase 6 / this plan seeds lifecycle doc; DO topology in Phase 9 |
 | AC-12 | README: setup, algo rationale, known limitations | Phase 6 |
 | AC-13 | `REFLECTION.md` covers races/limits; residual §4 excludes UI/adaptive/DO (those are Phases 7–9) | Phase 6 |
@@ -299,7 +313,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | Tests | JUnit 5, MockMvc, Mockito, Testcontainers Postgres + Redis | Locked |
 | Logging | **Spring Boot built-in structured logging**: `logging.structured.format.console=ecs`; no logstash encoder | Locked |
 | Time | Injectable `java.time.Clock` for refill/window math in pure engines | Locked |
-| CI | GitHub Actions → `./mvnw test` | Locked |
+| CI | GitHub Actions → `./mvnw verify` (Java 21 temurin; Docker present for Testcontainers) | Locked |
 | Ops | `Dockerfile`, `docker-compose.yml`, `deploy/digitalocean/` + App Platform spec | Locked |
 
 ## Assumptions
@@ -314,10 +328,12 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | A6 | Counter-based sliding window may admit slightly differently than a perfect log; bounds documented |
 | A7 | Base package remains `com.example.ratelimiter` |
 | A8 | Each verified phase is committed **and pushed** to `origin` so GitHub Actions runs on it; opening PRs still requires an explicit ask |
-| A9 | Spring Boot line is **4.0.x** (not 4.1); pin latest 4.0 patch at Phase 1 |
+| A9 | Spring Boot line is **4.0.x** (not 4.1); pin latest 4.0 patch at Phase 1. Java **21 LTS** — Boot 4.0 requires Java 17+ and supports 17–25, and 21 matches the JDK preinstalled in the dev container and on CI runners (no toolchain download) |
 | A10 | PDF stretch items **admin UI**, **adaptive limits**, and **DigitalOcean deploy** are **in v1** as Phases 7–9; residual backlog (fixed-window, JWT, Prometheus, etc.) stays in `REFLECTION.md` §4 |
 | A11 | Adaptive feedback is trusted from API-key holders; no separate feedback auth in v1 |
 | A12 | Live DigitalOcean deploy is optional/operator-run when credentials exist; phase success = artifacts + verification checklist |
+| A13 | No Docker in the dev container: `./mvnw test` (Surefire, `*Test`) must pass locally without it; Testcontainers `*IT` run via Failsafe on `./mvnw verify` in CI only |
+| A14 | DigitalOcean App Platform builds the image from the repo `Dockerfile`, so deploying needs no local Docker daemon |
 
 ## Open Questions
 
@@ -325,7 +341,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 
 | # | Resolution |
 |---|------------|
-| Q1 | Stack per [`build-plan-stack.md`](build-plan-stack.md): Java 25, Boot 4.0.x, Maven, Postgres, Redis, Lua |
+| Q1 | Stack per [`build-plan-stack.md`](build-plan-stack.md): **Java 21 (LTS)**, Boot 4.0.x, Maven, Postgres, Redis, Lua |
 | Q2 | Algorithms: **TOKEN_BUCKET** + **SLIDING_WINDOW** only |
 | Q3 | Sliding window: **counter-based**, not full request log |
 | Q4 | No matching enabled rule on evaluate/observe → **HTTP 404** |
@@ -647,6 +663,7 @@ sequenceDiagram
 |------|--------|
 | Feature slug | `distributed-rate-limiter` |
 | Branch prefix | `distributed-rate-limiter/phase-N` |
+| Branch topology | **Stacked** — `phase-N` branches off `phase-(N-1)` (Phase 1 off `main`); `main` stays at planning until the user asks for merges/PRs |
 | Commits | **One commit per verified phase** (parent agent after `Verified`) |
 | Push | **After every verified phase** — `git push -u origin distributed-rate-limiter/phase-N` (triggers CI) |
 | Stacked PR | **Only when the user explicitly asks** |
@@ -656,7 +673,7 @@ sequenceDiagram
 
 | Phase | Title | Status | PR | Notes |
 |-------|-------|--------|----|-------|
-| 1 | Scaffold Boot + Compose + Flyway + health + CI skeleton | Not Started | - | |
+| 1 | Scaffold Boot + Compose + Flyway + health + CI skeleton | Verified | - | Java 21 + Boot 4.0.7; 9 tests green; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md); Dockerfile/Compose/IT = CI-pending |
 | 2 | Rule CRUD + Postgres + Redis write-through cache | Not Started | - | |
 | 3 | Pure algorithm engines + unit tests | Not Started | - | |
 | 4 | Evaluate API + Lua + multi-replica path | Not Started | - | |
@@ -670,15 +687,15 @@ sequenceDiagram
 
 ### Phase 1 — Scaffold Spring Boot + Compose + Flyway stub + health + CI skeleton
 
-- **Objective:** Runnable multi-replica skeleton: Java 25 / Spring Boot 4.0.x Maven project, Dockerfile, Compose (**2** APIs + optional local Postgres/Redis **or** external hosts), Flyway baseline, API-key filter, public health, GitHub Actions workflow stub. All DB/Redis access via env **host / username / password**.
+- **Objective:** Runnable multi-replica skeleton: Java 21 / Spring Boot 4.0.x Maven project, Dockerfile, Compose (**2** APIs + optional local Postgres/Redis **or** external hosts), Flyway baseline, API-key filter, public health, GitHub Actions workflow stub. All DB/Redis access via env **host / username / password**.
 - **Implementation steps:**
-  1. Maven project: Java 25, Spring Boot **4.0.x** (latest 4.0 patch), base package `com.example.ratelimiter`, package-by-layer skeleton (incl. empty `web/` optional stub or leave for Phase 7).
+  1. Maven project: Java 21 (`<java.version>21</java.version>`), Spring Boot **4.0.x** (latest 4.0 patch), base package `com.example.ratelimiter`, package-by-layer skeleton (incl. empty `web/` optional stub or leave for Phase 7).
   2. Dependencies per stack checklist (web, validation, jpa, flyway, postgres, redis, actuator, springdoc, test + Testcontainers stubs as needed). **No** `spring-boot-starter-security` — API key is a custom `OncePerRequestFilter`. Thymeleaf deferred to Phase 7.
   3. `application.yml` + env bindings: `SPRING_DATASOURCE_URL` / `USERNAME` / `PASSWORD`, `SPRING_DATA_REDIS_HOST` / `PORT` / `PASSWORD`, `app.api-key` — **no hardcoded hosts/secrets**.
   4. Flyway baseline migration (empty or minimal placeholder).
   5. API-key `OncePerRequestFilter`; **`/actuator/health`, `/swagger-ui.html`, `/v3/api-docs` public**; health shows DB + Redis when configured.
   6. `Dockerfile` + `docker-compose.yml`: optional `postgres`/`redis` services; **api1** + **api2** with connection env (Compose DNS **or** external hosts).
-  7. `.github/workflows/ci.yml` → `./mvnw test` on push (Testcontainers for IT; no cloud DB required).
+  7. `.github/workflows/ci.yml` → Java 21 (temurin) + `./mvnw verify` on push (Testcontainers for IT; no cloud DB required). Configure Surefire (`*Test`) / Failsafe (`*IT`) so `./mvnw test` passes without Docker.
   8. Maven wrapper (`mvnw`).
 - **Expected outputs:** Apps start when env points at reachable Postgres/Redis; Compose healthy when using bundled datastores; context-load test green; CI workflow present.
 - **Rollback:** Revert phase commit; `docker compose down -v`.
@@ -781,7 +798,7 @@ sequenceDiagram
 
 - **Objective:** Production-shaped deploy: **separately provisioned** Postgres + Redis; **2** app instances behind LB; apps connect with host/username/password from machine secrets; Compose remains local proof.
 - **Implementation steps:**
-  1. Add `deploy/digitalocean/README.md` runbook + App Platform/Droplet spec: provision Postgres and Redis **separately** (Managed DBs); **2** app instances; HTTPS LB; health `/actuator/health`; wire env secrets (`SPRING_DATASOURCE_*`, `SPRING_DATA_REDIS_*`, `APP_API_KEY`) — never bake into image.
+  1. Add `deploy/digitalocean/README.md` runbook + **App Platform app spec** (`.do/app.yaml` or equivalent) using the repo `Dockerfile` as the build source — App Platform's Cloud Native Buildpacks do **not** cover Java, so `dockerfile_path` is the supported route; DO builds the image, no local Docker needed. Provision Postgres and Redis **separately** (Managed DBs); **2** app instances; HTTPS LB; health `/actuator/health`; wire env secrets (`SPRING_DATASOURCE_*`, `SPRING_DATA_REDIS_*`, `APP_API_KEY`) — never bake into image.
   2. Align [`docs/architecture/digitalocean.md`](../architecture/digitalocean.md) Mermaid (separate datastores + app tier).
   3. Document cross-instance demo: create rule → hammer `POST /api/v1/evaluate` via public URL → shared Redis quota across instances.
   4. Verification checklist for operator-run live deploy when DO credentials exist; confirm CI does **not** require DO account.

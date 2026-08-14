@@ -29,7 +29,7 @@ Aligned with this repo’s Cursor rules and the job-scheduler take-home style.
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Language | **Java 25** | Matches repo conventions / interview stack |
+| Language | **Java 21 (LTS)** | Boot 4.0 baseline is Java 17 (supports 17–25); 21 is the installed dev-container JDK |
 | Build | **Maven** (`mvnw`) | Same as job-scheduler |
 | Framework | **Spring Boot 4.0.x** | Web, validation, actuator, data |
 | Base package | `com.example.ratelimiter` | Clear product boundary |
@@ -222,7 +222,7 @@ Branch prefix: `distributed-rate-limiter/phase-N`. Full detail: [`distributed-ra
 
 Locked from discussion so far:
 
-1. **Java 25 + Spring Boot 4.0.x + Maven**  
+1. **Java 21 (LTS) + Spring Boot 4.0.x + Maven**  
 2. **Postgres = durable rules**, **Redis = rule cache + quota counters (Lua) + adaptive keys**  
 3. **Rule cache** on evaluate hot path (write-through + 60s TTL safety net)  
 4. **Token bucket + sliding window** only in v1  

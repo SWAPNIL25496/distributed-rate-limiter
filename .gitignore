@@ -24,3 +24,6 @@ Thumbs.db
 
 # Testcontainers / local
 .docker/
+
+# Downloaded JDK toolchains (never commit; ~300MB)
+.toolchain/
