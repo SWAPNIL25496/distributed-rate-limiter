@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-08-14, on SDD approval)
 
 ## Context
 
@@ -21,7 +21,7 @@ Primary resources:
 | `POST /api/v1/adaptive/feedback` | Downstream error-rate feedback ([ADR 0008](0008-adaptive-limits.md)) |
 | `/api/v1/rules` | Rule CRUD |
 
-**Thymeleaf** admin pages under `/ui` are an operator companion only — they call the same REST observe/rules semantics and do **not** replace or dual-publish the API (no GraphQL).
+**Thymeleaf** admin pages under `/drl/admin` are an operator companion only — they call the same REST observe/rules semantics and do **not** replace or dual-publish the API (no GraphQL).
 
 GraphQL and gRPC remain out of v1.
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-08-14, on SDD approval)
 
 ## Context
 
@@ -12,17 +12,22 @@ The rate limiter exposes mutating rule APIs and evaluate/observe endpoints that 
 
 Protect application API endpoints with a shared **API key** supplied as header **`X-API-Key`**, configured via environment (e.g. `APP_API_KEY` / `app.api-key`). Reject missing/invalid keys with `401`.
 
+Enforcement mechanism (locked): a custom **`OncePerRequestFilter`** registered in `config/`. `spring-boot-starter-security` is **not** a v1 dependency — the single-key check does not justify the filter-chain surface, and the Phase 7 UI session is a plain `HttpSession` attribute.
+
 **Protected (locked):**
 
 - `POST /api/v1/evaluate`
 - `GET /api/v1/quotas/**`
 - `/api/v1/rules/**`
+- `POST /api/v1/adaptive/feedback`
+- `/drl/admin/**` except `/drl/admin/login` (session attribute set from the API-key form)
 
 **Public (locked):**
 
 - `GET /actuator/health` — no API key, for Compose healthchecks
+- `GET /swagger-ui.html`, `GET /v3/api-docs/**` — open for demo
 
-JWT and richer RBAC stay in `REFLECTION.md` §4. Swagger UI may stay open for demo convenience; document that choice in Phase 2 README notes.
+JWT and richer RBAC stay in `REFLECTION.md` §4.
 
 ## Consequences
 

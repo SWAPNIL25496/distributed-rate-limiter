@@ -1,11 +1,11 @@
-# Distributed Rate Limiter — Stack & Build Plan (DRAFT)
+# Distributed Rate Limiter — Stack & Build Plan
 
 > **Authoritative plan:** [`distributed-rate-limiter.md`](distributed-rate-limiter.md) (full phased SDD + tracking).  
 > This file remains the **locked stack precursor**; do not reopen stack choices here — implement against the SDD + ADRs.  
-> **Status: DRAFT** (stack locked; full SDD also DRAFT until requester approves).  
+> **Status: Superseded by the approved SDD** (2026-08-14); kept for stack rationale.  
 > Source brief: [`problemStatement/`](../../problemStatement/)  
 > Feature slug: `distributed-rate-limiter`  
-> ADRs: [`docs/adr/`](../adr/) (0001–0009 Proposed)
+> ADRs: [`docs/adr/`](../adr/) (0001–0010 Accepted)
 
 ## What we are building
 
@@ -34,7 +34,7 @@ Aligned with this repo’s Cursor rules and the job-scheduler take-home style.
 | Framework | **Spring Boot 4.0.x** | Web, validation, actuator, data |
 | Base package | `com.example.ratelimiter` | Clear product boundary |
 | Public API | **REST** + **springdoc OpenAPI/Swagger** | PDF asks for REST evaluation + config APIs |
-| Admin UI | **Thymeleaf** `/ui` + `web/` package | PDF stretch UI in v1; companion to REST ([ADR 0007](../adr/0007-admin-thymeleaf-ui.md)) |
+| Admin UI | **Thymeleaf** `/drl/admin` + `web/` package | PDF stretch UI in v1; companion to REST ([ADR 0007](../adr/0007-admin-thymeleaf-ui.md)) |
 | Auth | **`X-API-Key`** on protected endpoints (+ UI session cookie) | Simple, demoable; no JWT in v1 |
 | Rule storage (durable) | **PostgreSQL 16** + **Spring Data JPA** + **Flyway** | System of record for rules; CRUD without restart |
 | Rule cache (hot path) | **Redis** shared cache of rules | Evaluate avoids Postgres; all replicas see the same cached rule |
@@ -117,7 +117,7 @@ flowchart LR
 | Runtime config CRUD | `/api/v1/rules` → **Postgres** + write-through **Redis rule cache** (no restart) |
 | Multi-instance correctness | Shared Redis counters + shared Redis rule cache; Postgres SoR; Compose local; DO App Platform prod-shaped |
 | Observable quota | Redis counter state + cached rule metadata (+ adaptive fields) |
-| Admin dashboard | Thymeleaf `/ui` polling/calling observe |
+| Admin dashboard | Thymeleaf `/drl/admin` polling/calling observe |
 | Adaptive limits | Feedback API + `rl:v1:adapt:*` TTL 120s |
 | DigitalOcean ≥2 + LB | Deploy runbook + App Platform spec |
 | Contention | Lua atomic per counter key; document race bounds in README/REFLECTION |
@@ -211,7 +211,7 @@ Branch prefix: `distributed-rate-limiter/phase-N`. Full detail: [`distributed-ra
 - `postgresql` driver
 - `spring-boot-starter-data-redis`
 - `spring-boot-starter-actuator`
-- `spring-boot-starter-security` (API-key filter) **or** a small custom filter
+- Custom `OncePerRequestFilter` for the API key — **no** `spring-boot-starter-security` in v1 ([ADR 0006](../adr/0006-api-key-auth.md))
 - `springdoc-openapi-starter-webmvc-ui`
 - Test: `spring-boot-starter-test`, Testcontainers Postgres + Redis
 - Ops: `Dockerfile`, `docker-compose.yml` (postgres + redis + api×2), `.github/workflows/ci.yml`, `deploy/digitalocean/` App Platform spec (Phase 9)
@@ -229,4 +229,4 @@ Locked from discussion so far:
 5. **In v1:** Thymeleaf admin UI, adaptive limits, DigitalOcean deploy artifacts (Phases 7–9)  
 6. **Still out:** Prometheus, JWT/RBAC, GraphQL/gRPC, fixed-window, MySQL  
 
-**Next step:** Approve [`distributed-rate-limiter.md`](distributed-rate-limiter.md) (clear `DRAFT`) and mark ADRs **Accepted**, then run `phase-executor` for Phase 1 when asked.
+**Status:** [`distributed-rate-limiter.md`](distributed-rate-limiter.md) approved 2026-08-14 and ADRs 0001–0010 Accepted; phase execution runs one phase per pass from the SDD.

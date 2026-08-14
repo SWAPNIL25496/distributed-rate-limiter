@@ -1,8 +1,8 @@
 # Distributed Rate Limiter Service
 
-> **Status: DRAFT** — requester must clear `DRAFT` before `phase-executor` may start.  
+> **Status: Approved** — requester approved 2026-08-14. Phase execution may start.  
 > Feature slug: `distributed-rate-limiter`  
-> Authoritative product locks: this SDD + Proposed/Accepted ADRs under [`docs/adr/`](../adr/)  
+> Authoritative product locks: this SDD + Accepted ADRs under [`docs/adr/`](../adr/)  
 > Stack precursor (locked choices only): [`build-plan-stack.md`](build-plan-stack.md)  
 > Problem brief: [`problemStatement/`](../../problemStatement/)  
 > Architecture: [`docs/architecture/request-lifecycle.md`](../architecture/request-lifecycle.md), [`docs/architecture/digitalocean.md`](../architecture/digitalocean.md)  
@@ -20,15 +20,15 @@ v1 also includes the former PDF stretch items:
 
 The service ships with unit + HTTP integration tests (including ≥1 concurrent-access test), GitHub Actions CI on push, Docker Compose (Postgres + Redis + 2 API replicas), architecture Mermaid diagrams in-repo, DigitalOcean App Platform runbook/spec, and operator docs (`README.md`, `REFLECTION.md`).
 
-Architecturally: **Postgres** is the durable system of record for rules; **Redis** holds a shared rule cache (write-through, 60s TTL safety net), hot quota counters, and adaptive multiplier state; **Lua scripts** make evaluate atomic under contention. Algorithms in v1: **TOKEN_BUCKET** and **SLIDING_WINDOW** only. Delivery: one commit per verified phase; push/PR only when the user asks.
+Architecturally: **Postgres** is the durable system of record for rules; **Redis** holds a shared rule cache (write-through, 60s TTL safety net), hot quota counters, and adaptive multiplier state; **Lua scripts** make evaluate atomic under contention. Algorithms in v1: **TOKEN_BUCKET** and **SLIDING_WINDOW** only. Delivery: one commit per verified phase, **pushed after each phase** so GitHub Actions gates every increment; PRs only when the user asks.
 
 ## Actors and Entry Points
 
 | Actor | Entry point | Notes |
 |-------|-------------|--------|
 | Client / API gateway | REST evaluate, quotas, rules, adaptive feedback | Sends `X-API-Key` on protected routes |
-| Operator / candidate | Swagger UI, Thymeleaf `/ui`, `curl`, Compose | Demo + interview walkthrough |
-| Admin UI user | `/ui`, `/ui/quotas` (or similar) | Same `X-API-Key` via form / session cookie |
+| Operator / candidate | Swagger UI, Thymeleaf `/drl/admin`, `curl`, Compose | Demo + interview walkthrough |
+| Admin UI user | `/drl/admin`, `/drl/admin/quotas` | Same `X-API-Key` via `/drl/admin/login` form → session cookie |
 | Downstream service | `POST /api/v1/adaptive/feedback` | Reports `downstreamErrorRate` per tenant/namespace |
 | API replica 1 / 2 | Same image, same env | Stateless app; shared Postgres + Redis |
 | PostgreSQL 16 | Rules SoR | Flyway-owned schema; JPA access |
@@ -46,7 +46,7 @@ Architecturally: **Postgres** is the durable system of record for rules; **Redis
 | Framework | **Spring Boot 4.0.x** (latest 4.0 patch at Phase 1 scaffold) |
 | Base package | `com.example.ratelimiter` |
 | Public API | REST + **springdoc** OpenAPI/Swagger ([ADR 0005](../adr/0005-rest-api-only.md)) |
-| Admin companion UI | **Thymeleaf** under `/ui` ([ADR 0007](../adr/0007-admin-thymeleaf-ui.md)); `web/` package; `spring-boot-starter-thymeleaf` |
+| Admin companion UI | **Thymeleaf** under `/drl/admin` ([ADR 0007](../adr/0007-admin-thymeleaf-ui.md)); `web/` package; `spring-boot-starter-thymeleaf` |
 | Auth | **`X-API-Key`** on evaluate, quotas, rules, adaptive feedback, and UI session; **`/actuator/health` public** |
 | Rule SoR | **PostgreSQL 16** + Spring Data JPA + Flyway |
 | Rule cache | **Redis** shared keys; cache-aside on read; write-through on CRUD; TTL **60s** |
@@ -67,7 +67,7 @@ Architecturally: **Postgres** is the durable system of record for rules; **Redis
 | Tests | JUnit 5, MockMvc, Mockito; Testcontainers Postgres + Redis; concurrent evaluate test; adaptive tighten/relax unit + IT |
 | CI | GitHub Actions on push → `./mvnw test` (does **not** require a DO account) |
 | Docs | README; REFLECTION (races, limits, residual backlog); Mermaid architecture + DO topology |
-| Delivery | One commit per verified phase; push / PR only when asked |
+| Delivery | One commit per verified phase, **pushed after every phase** (CI runs per increment); PRs only when asked |
 
 ### Package layout (locked)
 
@@ -159,8 +159,12 @@ App replicas share whatever Postgres/Redis the env points at (Compose services *
 | Sliding window | Counter-based (not full log) |
 | Health | `/actuator/health` **public**; Compose + DO healthchecks |
 | API key config | Env `APP_API_KEY` (or `app.api-key`) |
-| Admin UI paths | `/ui`, `/ui/quotas` (or similar); Thymeleaf |
-| OpenAPI / Swagger | Prefer open for demo; document in Phase 2 |
+| Admin UI paths | **`/drl/admin`** (rules list) and **`/drl/admin/quotas`** (utilization); Thymeleaf; `/drl/admin/login` for API-key form |
+| OpenAPI / Swagger | **Public** (no API key) at `/swagger-ui.html` + `/v3/api-docs` |
+| Observe `namespace` | **Required** query param; missing → `400` |
+| Observe side effects | **Read-only** — never consumes quota |
+| `remaining` type | Integer; token bucket floors fractional tokens |
+| Algorithm source of truth | **Lua** in production; pure Java engines mirror the same spec and are covered by parity tests (Phase 4) |
 | DO app instances | **2**; **separate** Managed Postgres + Managed Redis; connect via host/user/password secrets; HTTPS LB |
 
 ### Algorithm parameter semantics (locked)
@@ -225,7 +229,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 
 | ID | Requirement |
 |----|-------------|
-| FR-22 | Thymeleaf admin UI at `/ui` (and `/ui/quotas` or similar): tenants/rules + live utilization via observe API (server-side or simple JS poll); API key via form / session cookie |
+| FR-22 | Thymeleaf admin UI at `/drl/admin`, `/drl/admin/quotas`, `/drl/admin/login`: tenants/rules + live utilization via observe API (server-side or simple JS poll); API key via form / session cookie |
 | FR-23 | Adaptive feedback API `POST /api/v1/adaptive/feedback` with `{ identifier, namespace, downstreamErrorRate }` (0.0–1.0); API key required |
 | FR-24 | Redis adaptive key TTL 120s; locked multiplier mapping; evaluate applies multiplier when `adaptive_enabled`; min effective limit 1 when base ≥ 1 |
 | FR-25 | Observe (and evaluate path as needed) expose `adaptiveMultiplier`, `effectiveLimit`, `downstreamErrorRate` (nullable) |
@@ -243,8 +247,8 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | AC-6 | Observe returns consumption, remaining, reset consistent with rule + counter state | IT |
 | AC-7 | Token bucket respects burst then sustained refill (unit tests with injectable clock/time) | Unit tests |
 | AC-8 | Sliding window respects limit over `window_seconds` (unit + Lua path) | Unit + IT |
-| AC-9 | `docker compose up` brings up postgres + redis + api1 + api2 healthily | Compose smoke |
-| AC-10 | GitHub Actions runs `./mvnw test` on push | Workflow file + green CI when pushed |
+| AC-9 | `docker compose up` (default: bundled local datastores) brings up postgres + redis + api1 + api2 healthily; same file works against external hosts via env | Compose smoke |
+| AC-10 | GitHub Actions runs `./mvnw test` on push | Workflow file + **green CI on every phase push** (first real run: Phase 1) |
 | AC-11 | Architecture Mermaid present under `docs/architecture/` | Phase 6 / this plan seeds lifecycle doc; DO topology in Phase 9 |
 | AC-12 | README: setup, algo rationale, known limitations | Phase 6 |
 | AC-13 | `REFLECTION.md` covers races/limits; residual §4 excludes UI/adaptive/DO (those are Phases 7–9) | Phase 6 |
@@ -267,7 +271,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 
 ## Dependencies
 
-### ADRs (Proposed until SDD approved → then Accepted)
+### ADRs (all **Accepted** 2026-08-14 with this SDD)
 
 | ADR | Decision |
 |-----|----------|
@@ -277,9 +281,9 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | [0004](../adr/0004-lua-atomic-evaluation.md) | Lua scripts for atomic evaluate under contention |
 | [0005](../adr/0005-rest-api-only.md) | REST public API + springdoc; Thymeleaf is admin companion |
 | [0006](../adr/0006-api-key-auth.md) | `X-API-Key` on protected endpoints; health public |
-| [0007](../adr/0007-admin-thymeleaf-ui.md) | Thymeleaf admin UI under `/ui` |
+| [0007](../adr/0007-admin-thymeleaf-ui.md) | Thymeleaf admin UI under `/drl/admin` |
 | [0008](../adr/0008-adaptive-limits.md) | Downstream error-rate adaptive multipliers |
-| [0009](../adr/0009-digitalocean-deploy.md) | DigitalOcean App Platform deploy path |
+| [0009](../adr/0009-digitalocean-deploy.md) | DigitalOcean deploy; separately provisioned Postgres/Redis |
 | [0010](../adr/0010-shard-ready-redis-keys.md) | Versioned, shard-ready Redis counter keys |
 
 ### Libraries / tooling (intent)
@@ -290,10 +294,10 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | Admin UI | `spring-boot-starter-thymeleaf` | Locked (Phase 7) |
 | Persistence | `spring-boot-starter-data-jpa`, Flyway, PostgreSQL driver | Locked |
 | Redis | `spring-boot-starter-data-redis` + Lua via `StringRedisTemplate` / script API | Locked |
-| Security | `spring-boot-starter-security` **or** small custom filter for API key | Locked intent |
+| Security | **Custom `OncePerRequestFilter`** for `X-API-Key`; **no** `spring-boot-starter-security` in v1 | Locked |
 | OpenAPI | springdoc-openapi-starter-webmvc-ui | Locked |
 | Tests | JUnit 5, MockMvc, Mockito, Testcontainers Postgres + Redis | Locked |
-| Logging | Structured JSON (Boot JSON or logstash-logback-encoder) | Locked intent |
+| Logging | **Spring Boot built-in structured logging**: `logging.structured.format.console=ecs`; no logstash encoder | Locked |
 | Time | Injectable `java.time.Clock` for refill/window math in pure engines | Locked |
 | CI | GitHub Actions → `./mvnw test` | Locked |
 | Ops | `Dockerfile`, `docker-compose.yml`, `deploy/digitalocean/` + App Platform spec | Locked |
@@ -309,7 +313,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | A5 | Cache TTL 60s is a safety net only; write-through keeps replicas coherent after CRUD |
 | A6 | Counter-based sliding window may admit slightly differently than a perfect log; bounds documented |
 | A7 | Base package remains `com.example.ratelimiter` |
-| A8 | Push / GitHub PRs happen only when the user explicitly asks |
+| A8 | Each verified phase is committed **and pushed** to `origin` so GitHub Actions runs on it; opening PRs still requires an explicit ask |
 | A9 | Spring Boot line is **4.0.x** (not 4.1); pin latest 4.0 patch at Phase 1 |
 | A10 | PDF stretch items **admin UI**, **adaptive limits**, and **DigitalOcean deploy** are **in v1** as Phases 7–9; residual backlog (fixed-window, JWT, Prometheus, etc.) stays in `REFLECTION.md` §4 |
 | A11 | Adaptive feedback is trusted from API-key holders; no separate feedback auth in v1 |
@@ -317,7 +321,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 
 ## Open Questions
 
-**None remaining.** Defaults locked with this DRAFT (stack + requester instructions):
+**None remaining.** Defaults locked with this SDD (stack + requester instructions):
 
 | # | Resolution |
 |---|------------|
@@ -334,6 +338,10 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | Q11 | **In v1:** Thymeleaf admin UI + adaptive limits + DigitalOcean deploy artifacts (Phases 7–9). **Still out:** Prometheus, JWT/RBAC, GraphQL/gRPC, fixed-window, MySQL |
 | Q12 | Branch prefix `distributed-rate-limiter/phase-N`; one commit per verified phase |
 | Q13 | Redis keys `rl:v1:…` with counter `{shardId}`; `counter-shards=1` in v1 ([ADR 0010](../adr/0010-shard-ready-redis-keys.md)) |
+| Q14 | API key enforced by a **custom `OncePerRequestFilter`** (no Spring Security starter in v1) |
+| Q15 | Logging via **Boot built-in structured logging** (`ecs` console format); rule PK **BIGSERIAL** (surrogate; real identity is unique `(identifier, namespace)`); Swagger + `/v3/api-docs` **public** |
+| Q16 | Admin UI paths fixed under a dedicated prefix: `/drl/admin`, `/drl/admin/quotas`, `/drl/admin/login` |
+| Q17 | Observe is **read-only** and requires `namespace`; **Lua** is the production algorithm source of truth with Phase 4 parity tests against the Java engines |
 
 ### Gaps vs PDF (must-trace)
 
@@ -345,7 +353,7 @@ Do **not** implement in v1. Residual ideas may appear in Phase 6 `REFLECTION.md`
 | Multi-instance shared state | FR-1, Phases 1/4/9 | Redis counters + cache; Compose local; DO prod-shaped |
 | Observe | FR-7, Phase 5 | Quotas API; adaptive fields in Phase 8 |
 | Diagram + contention + CI + README | FR-8–12, Phases 5–6 | Mermaid seeded now |
-| Admin dashboard UI | FR-22, Phase 7, ADR 0007 | Thymeleaf `/ui` |
+| Admin dashboard UI | FR-22, Phase 7, ADR 0007 | Thymeleaf `/drl/admin` |
 | Adaptive limits | FR-23–25, Phase 8, ADR 0008 | Feedback + Redis multiplier |
 | DigitalOcean ≥2 + LB | FR-26, Phase 9, ADR 0009 | Artifacts + operator-run live deploy |
 
@@ -356,16 +364,16 @@ Auth: header `X-API-Key` on protected routes ([ADR 0006](../adr/0006-api-key-aut
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `POST` | `/api/v1/evaluate` | Yes | Allow/deny for identifier + namespace (applies adaptive multiplier when enabled) |
-| `GET` | `/api/v1/quotas/{identifier}?namespace=` | Yes | Observe consumption / remaining / reset (+ adaptive fields) |
+| `GET` | `/api/v1/quotas/{identifier}?namespace=` | Yes | Observe consumption / remaining / reset (+ adaptive fields); `namespace` **required**; read-only |
 | `POST` | `/api/v1/adaptive/feedback` | Yes | Report downstream error rate; set/refresh adaptive Redis key |
 | `POST` | `/api/v1/rules` | Yes | Create rule |
 | `GET` | `/api/v1/rules` | Yes | List rules (`limit` default 50, max 200) |
 | `GET` | `/api/v1/rules/{id}` | Yes | Get rule by id |
 | `PUT` | `/api/v1/rules/{id}` | Yes | Update rule |
 | `DELETE` | `/api/v1/rules/{id}` | Yes | Delete rule |
-| `GET` | `/ui`, `/ui/quotas` (or similar) | Session / API key | Thymeleaf admin companion |
+| `GET` | `/drl/admin`, `/drl/admin/quotas`, `/drl/admin/login` | Session (API key via form) | Thymeleaf admin companion |
 | `GET` | `/actuator/health` | **No** | Public liveness/readiness; Compose + DO probes |
-| `GET` | `/swagger-ui` / OpenAPI JSON | Prefer open for demo | API docs |
+| `GET` | `/swagger-ui.html`, `/v3/api-docs` | **No** | API docs (public for demo) |
 
 ### Evaluate request / response
 
@@ -496,7 +504,7 @@ Flyway migrations under `src/main/resources/db/migration/`. No production relian
 
 | Column | Type (intent) | Notes |
 |--------|---------------|--------|
-| `id` | UUID or BIGSERIAL PK | Stable rule id |
+| `id` | **BIGSERIAL** PK (`Long` in JPA) | Stable rule id; readable in URLs |
 | `identifier` | VARCHAR NOT NULL | Tenant / caller key |
 | `namespace` | VARCHAR NOT NULL | Resource namespace |
 | `algorithm` | VARCHAR NOT NULL | `TOKEN_BUCKET` \| `SLIDING_WINDOW` |
@@ -640,8 +648,9 @@ sequenceDiagram
 | Feature slug | `distributed-rate-limiter` |
 | Branch prefix | `distributed-rate-limiter/phase-N` |
 | Commits | **One commit per verified phase** (parent agent after `Verified`) |
-| Push / stacked PR | **Only when the user explicitly asks** |
-| Planning SoT | This SDD + ADRs (Proposed → Accepted on approval) |
+| Push | **After every verified phase** — `git push -u origin distributed-rate-limiter/phase-N` (triggers CI) |
+| Stacked PR | **Only when the user explicitly asks** |
+| Planning SoT | This SDD (Approved) + ADRs 0001–0010 (Accepted) |
 
 ## Phase Implementation Status
 
@@ -664,10 +673,10 @@ sequenceDiagram
 - **Objective:** Runnable multi-replica skeleton: Java 25 / Spring Boot 4.0.x Maven project, Dockerfile, Compose (**2** APIs + optional local Postgres/Redis **or** external hosts), Flyway baseline, API-key filter, public health, GitHub Actions workflow stub. All DB/Redis access via env **host / username / password**.
 - **Implementation steps:**
   1. Maven project: Java 25, Spring Boot **4.0.x** (latest 4.0 patch), base package `com.example.ratelimiter`, package-by-layer skeleton (incl. empty `web/` optional stub or leave for Phase 7).
-  2. Dependencies per stack checklist (web, validation, jpa, flyway, postgres, redis, actuator, security-or-filter, springdoc, test + Testcontainers stubs as needed). Thymeleaf deferred to Phase 7.
+  2. Dependencies per stack checklist (web, validation, jpa, flyway, postgres, redis, actuator, springdoc, test + Testcontainers stubs as needed). **No** `spring-boot-starter-security` — API key is a custom `OncePerRequestFilter`. Thymeleaf deferred to Phase 7.
   3. `application.yml` + env bindings: `SPRING_DATASOURCE_URL` / `USERNAME` / `PASSWORD`, `SPRING_DATA_REDIS_HOST` / `PORT` / `PASSWORD`, `app.api-key` — **no hardcoded hosts/secrets**.
   4. Flyway baseline migration (empty or minimal placeholder).
-  5. API-key filter; **`/actuator/health` public**; health shows DB + Redis when configured.
+  5. API-key `OncePerRequestFilter`; **`/actuator/health`, `/swagger-ui.html`, `/v3/api-docs` public**; health shows DB + Redis when configured.
   6. `Dockerfile` + `docker-compose.yml`: optional `postgres`/`redis` services; **api1** + **api2** with connection env (Compose DNS **or** external hosts).
   7. `.github/workflows/ci.yml` → `./mvnw test` on push (Testcontainers for IT; no cloud DB required).
   8. Maven wrapper (`mvnw`).
@@ -712,7 +721,8 @@ sequenceDiagram
   4. Prove multi-replica path via Compose (api1 and api2 share Redis counters).
   5. Structured logs for allow/deny.
   6. Integration tests with Testcontainers Redis (+ Postgres for rule seed).
-- **Expected outputs:** Evaluate returns allow/deny/remaining/resetAt/algorithm; over-limit denies; 404 when no rule.
+  7. **Parity tests:** same scenarios (burst exhaust, refill, window boundary) through the Phase 3 Java engine and the Lua path assert identical allow/deny + remaining, guarding against drift between the two implementations.
+- **Expected outputs:** Evaluate returns allow/deny/remaining/resetAt/algorithm; over-limit denies; 404 when no rule; engine/Lua parity green.
 - **Rollback:** Disable evaluate route or revert commit; CRUD still works.
 - **Testing strategy:** MockMvc + Testcontainers; optional dual-port Compose smoke documented in verification.
 
@@ -720,7 +730,7 @@ sequenceDiagram
 
 - **Objective:** Quota observe endpoint; PDF-required concurrent access test proving no over-admission under contention.
 - **Implementation steps:**
-  1. `GET /api/v1/quotas/{identifier}?namespace=` — read rule + counter state; shape per API section (adaptive fields added in Phase 8); **404** if no enabled rule.
+  1. `GET /api/v1/quotas/{identifier}?namespace=` — read rule + counter state **without consuming quota**; `namespace` required (**400** if absent); shape per API section (adaptive fields added in Phase 8); **404** if no enabled rule.
   2. Concurrent evaluate test: N threads / parallel requests against shared Redis; assert total allows ≤ limit (burst or window).
   3. Document contention reasoning (Lua single-threaded execution per key) for REFLECTION.
   4. Broaden MockMvc/IT coverage for observe + evaluate edge cases.
@@ -746,11 +756,11 @@ sequenceDiagram
 - **Objective:** Simple admin companion UI showing tenants/rules and real-time quota utilization via the observe API.
 - **Implementation steps:**
   1. Add `spring-boot-starter-thymeleaf`; package `com.example.ratelimiter.web`.
-  2. Routes: `/ui` (and `/ui/quotas` or similar); list rules/tenants; show live utilization (server-side observe calls and/or simple JS poll to `/api/v1/quotas/...`).
+  2. Routes: `/drl/admin` (rules/tenants), `/drl/admin/quotas` (utilization), `/drl/admin/login` (API-key form); show live utilization (server-side observe calls and/or simple JS poll to `/api/v1/quotas/...`).
   3. API key entry via form → session cookie; reuse same `X-API-Key` semantics for backend calls.
   4. Secure UI appropriately with existing API-key/session approach; keep REST as public API contract ([ADR 0005](../adr/0005-rest-api-only.md), [ADR 0007](../adr/0007-admin-thymeleaf-ui.md)).
   5. Update README with UI URL and how to log in with the API key.
-- **Expected outputs:** Operator can open `/ui`, authenticate with API key, see utilization updating from observe data.
+- **Expected outputs:** Operator can open `/drl/admin`, authenticate with API key, see utilization updating from observe data.
 - **Rollback:** Revert phase commit; remove Thymeleaf dependency and `web/` controllers/templates.
 - **Testing strategy:** MockMvc for UI auth + page render; IT that utilization reflects observe after evaluates; manual Compose smoke.
 
@@ -785,6 +795,7 @@ sequenceDiagram
 | Risk | Mitigation |
 |------|------------|
 | Rule cache stale after TTL-only expiry mid-update race | Write-through on CRUD; short 60s TTL; delete key on disable/delete |
+| Java engines (Phase 3) and Lua scripts (Phase 4) implement the same math twice and can drift | Lua is the production source of truth; Phase 4 adds parity tests running identical scenarios through both paths and asserting the same allow/deny + remaining |
 | Counter-based sliding window ≠ perfect log | Document approximation in README/REFLECTION; unit tests for intended semantics |
 | Lua script bugs under clock skew | Injectable/ms timestamps from Redis `TIME` or script args; document NTP assumption |
 | Postgres down, cache hit | Evaluate can continue on cached rule; CRUD fails loudly; health shows DB down |
@@ -795,6 +806,6 @@ sequenceDiagram
 
 ## Approval
 
-- **Status: DRAFT.** Requester must clear `DRAFT` (approve this SDD + ADRs) before phase execution.
-- After approval, start **`phase-executor`** for Phase 1 on `distributed-rate-limiter/phase-1` **only when the requester asks**.
-- Tracking is branch / PR only; push only on explicit request.
+- **Status: Approved** (requester, 2026-08-14). ADRs 0001–0010 moved Proposed → Accepted.
+- Phase execution proceeds one phase per pass on `distributed-rate-limiter/phase-N`.
+- Tracking is branch / PR only; each verified phase is pushed so CI gates it. PRs on explicit request.

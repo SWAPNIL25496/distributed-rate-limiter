@@ -44,6 +44,6 @@ Apps do **not** co-host production Postgres/Redis. Local Compose may run optiona
 2. Deploy **2** app instances with those env values (operator-run when credentials exist).  
 3. Create a rule via the public HTTPS URL.  
 4. Hammer `POST /api/v1/evaluate` via the LB; assert shared Redis quota across instances.  
-5. Optionally observe via quotas API or Thymeleaf `/ui`.
+5. Optionally observe via quotas API or Thymeleaf `/drl/admin`.
 
 CI does **not** require a DigitalOcean account (Testcontainers covers IT).
