@@ -1,0 +1,51 @@
+---
+description: Planned-work lifecycle, subagent use, parallelisation, and guidance placement
+alwaysApply: true
+---
+
+# Agent Workflow Boundaries
+
+## Planned-Work Lifecycle
+
+For **planned work** that changes code and produces SDDs:
+
+1. **`code-investigator`** — when existing behaviour must be understood first (optional).
+2. **`architect-planner`** — phased plan under `docs/sdd/<slug>.md` + ADRs; mark `DRAFT` until approved.
+3. **Approve SDD** — requester clears `DRAFT`. Do not start phase execution while `DRAFT`.
+4. **`phase-executor`** — one approved phase per pass on `<feature-slug>/phase-<n>`.
+5. **`doc-sync`** — capture implementation Status / Notes (preserve `PR`).
+6. **`test-runner`** — tests + `docs/sdd/test-reports/<slug>.md`.
+7. **`doc-sync`** — verification status, coverage, residual risk.
+8. **Parent agent** — when phase is **`Verified`**: one commit for that phase; open/update stacked PR **only if the user asked to push/PR**; then may start next phase.
+9. **`rule-feedback-writer`** — after durable guidance feedback (typically end of feature).
+
+## Standalone Subagent Use
+
+| Subagent | Standalone when |
+| --- | --- |
+| `code-investigator` | Read-only how/where/flow questions |
+| `architect-planner` | Vague or large scope needing a plan |
+| `phase-executor`, `test-runner`, `doc-sync`, `rule-feedback-writer` | Planned work / mutations as above |
+
+## Parallelisation
+
+- Parallelise **read-only analysis** only.
+- Never parallelise writes to product code, tests, config, reports, plans, or ADRs.
+
+## Responsibility Boundaries
+
+- `phase-executor` must not create/update planning docs, test reports, or ADRs; must not commit.
+- `architect-planner` must not implement application code.
+- `doc-sync` updates Status / Notes only; preserves `PR`; no product code.
+- `test-runner` must not claim pass without command evidence.
+- Parent owns commits; push only when the user explicitly asks.
+
+## Guidance Placement
+
+- `AGENTS.md` — broad defaults
+- `.cursor/agents/*.mdc` — role workflow
+- `.cursor/rules/agent/` — process rules
+- `.cursor/rules/language/` — language practices
+- `.cursor/rules/<framework>/` — stack rules
+- `docs/adr/` — durable architecture
+- Feature facts stay in SDD / test-report / investigation docs

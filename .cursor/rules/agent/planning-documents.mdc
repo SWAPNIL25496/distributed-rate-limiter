@@ -1,0 +1,48 @@
+---
+description: Structure and content requirements for SDDs under docs/sdd/
+globs:
+  - "docs/sdd/**/*.md"
+---
+
+# Planning Documents
+
+## Location
+
+All feature SDDs live under **`docs/sdd/<feature-slug>.md`**. One file per feature.
+
+## Required Sections
+
+1. **Goal**
+2. **Actors and Entry Points**
+3. **Scope**
+4. **Non-Goals**
+5. **Functional Requirements**
+6. **Acceptance Criteria**
+7. **Non-Functional Requirements** (omit if none)
+8. **Dependencies** (link Accepted ADRs)
+9. **Assumptions**
+10. **Open Questions**
+11. **API Changes**
+12. **Data / Storage Changes** (omit if none)
+13. **Sequence Diagrams**
+14. **Tracking** — branch prefix `<feature-slug>/phase-N`; push policy note
+15. **Phase Implementation Status** — `Phase | Title | Status | PR | Notes`
+16. **Phases** — per phase: Objective, Implementation steps, Expected outputs, Rollback, Testing strategy
+
+## Phase Status Values
+
+| Value | Meaning |
+|---|---|
+| `Not Started` | No implementation begun |
+| `In Progress` | Partially implemented |
+| `Implemented` | Code written, not yet verified |
+| `Verified` | Tests passed with evidence in `docs/sdd/test-reports/<slug>.md` |
+| `Blocked` | Cannot proceed; reason in Notes |
+
+Seed `PR` as `-` until a PR URL exists (only after user-requested push).
+
+## Rules
+
+- Mark `DRAFT` until requester approves.
+- Durable architecture → `docs/adr/`; link from SDD.
+- `doc-sync` updates Status / Notes only; preserve `PR`.

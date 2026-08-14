@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStop": [
+      {
+        "command": "./hooks/invoke-doc-sync-after-phase-executor.sh",
+        "matcher": "phase-executor",
+        "loop_limit": 3
+      },
+      {
+        "command": "./hooks/invoke-doc-sync-after-test-runner.sh",
+        "matcher": "test-runner",
+        "loop_limit": 3
+      }
+    ]
+  }
+}

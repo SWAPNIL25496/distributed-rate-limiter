@@ -1,0 +1,19 @@
+---
+description: Spring Boot 4 conventions for api/worker Job Scheduler
+globs:
+  - "**/*.java"
+  - "**/application*.yml"
+  - "**/application*.yaml"
+  - "**/db/migration/**"
+---
+
+# Spring Boot conventions
+
+- Spring Boot **4.x**, Maven, package-by-layer.
+- Split roles with `app.role=api|worker`; do not claim fires in api role.
+- Persistence: Spring Data JPA + Flyway; no production reliance on `ddl-auto`.
+- HTTP client: Spring `RestClient` for outbound job calls.
+- API docs: springdoc-openapi.
+- Tests: JUnit 5, MockMvc, Mockito, Testcontainers MySQL; inject mocked `Clock`.
+- Structured logging in v1; do not add Prometheus unless asked (see `REFLECTION.md` §4).
+- Auth: API key filter/interceptor; JWT is out of scope unless requested.

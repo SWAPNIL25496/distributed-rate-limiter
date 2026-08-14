@@ -1,0 +1,57 @@
+---
+description: Feature work merges via stacked per-phase PRs when push is requested
+alwaysApply: true
+---
+
+# Feature Pull Requests
+
+## Merge Policy
+
+- Feature work merges via PR when publishing; do not push to protected trunk without review.
+- **One PR per verified phase** as a GitHub stacked PR when the user asks to push.
+- Prefer `gh stack` when available; otherwise manual `--base` stacking.
+- Small fixes with no SDD may use a single PR; use `N/A` for SDD/ADR sections.
+- **Do not push** unless the user explicitly asks.
+
+## Branch rules
+
+- Branch: `<feature-slug>/phase-<n>`
+- Title: `[<feature-slug>] Phase N: <phase title>`
+
+## Required PR Description Sections
+
+```markdown
+## 0. Tracking
+
+- SDD: `docs/sdd/<feature-slug>.md`
+- Stack: phase N of M (GitHub stacked PR)
+- Stack tool: `gh stack` / manual fallback
+- PR base branch:
+- Phase branch:
+
+## 1. Deployment prerequisites
+
+### Config changes
+### Database changes
+### Redis changes
+### Deploy order
+
+## 2. Changes summary
+
+### Feature overview
+### SDD
+### ADRs
+
+## 3. Verification
+
+### Tests
+### Test coverage
+### Linting and static checks
+
+## 4. Instrumentation and production verification
+
+### Instrumentation added or changed
+### How to verify in production
+```
+
+Fill every subsection; use `None` / `N/A` when not applicable. Never invent test/coverage results.

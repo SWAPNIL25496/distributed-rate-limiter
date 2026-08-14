@@ -1,0 +1,31 @@
+---
+description: Structure for investigation reports under docs/investigation/
+globs:
+  - "docs/investigation/**/*.md"
+---
+
+# Investigation Reports
+
+## Location
+
+**`docs/investigation/<topic-slug>.md`**.
+
+## Required Sections
+
+1. Question
+2. Summary
+3. Key Findings
+4. APIs Involved
+5. Flow Diagram
+6. Call Flow
+7. Code Pointers
+8. Snippets
+9. Reproduction Scenarios
+10. Log Analysis (omit if no logs)
+11. Files Involved
+12. Assumptions
+13. Gaps and Open Questions
+
+## Ownership
+
+`code-investigator` creates/updates. Others may link, not rewrite, unless asked.

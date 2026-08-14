@@ -1,0 +1,41 @@
+---
+description: Keep planning docs and test reports consistent after execute/verify
+globs:
+  - "docs/**/*.md"
+---
+
+# Documentation Sync
+
+## Sync Points
+
+1. After `phase-executor` — Status / Notes / changed files / risks / next phase.
+2. After `test-runner` — verification, coverage, residual risk; link report; may set `Verified`.
+
+After sync point 2 marks **`Verified`**, the **parent agent** commits the phase. Push / stacked PR
+**only when the user asks**.
+
+## What `doc-sync` May Update
+
+- Phase **Status** and **Notes**
+- Links to test reports and ADRs
+
+## What `doc-sync` Must Not Do
+
+- Modify product code or tests
+- Invent evidence
+- Create new SDDs or test reports
+- Overwrite `PR` cells
+
+## Evidence
+
+- `Verified` requires `docs/sdd/test-reports/` path with command evidence
+- `Implemented` should list changed files
+
+## File Ownership
+
+| File | Creates | Updates |
+|---|---|---|
+| `docs/sdd/<slug>.md` | architect-planner | doc-sync (Status/Notes); parent (`PR`) |
+| `docs/sdd/test-reports/<slug>.md` | test-runner | test-runner |
+| `docs/investigation/<slug>.md` | code-investigator | code-investigator |
+| `docs/adr/NNNN-*.md` | architect-planner / rule-feedback-writer | same |

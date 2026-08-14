@@ -1,0 +1,33 @@
+---
+description: Structure for test reports under docs/sdd/test-reports/
+globs:
+  - "docs/sdd/test-reports/**/*.md"
+---
+
+# Test Reports
+
+## Location
+
+**`docs/sdd/test-reports/<feature-slug>.md`** (same slug as SDD).
+
+## Required Sections
+
+1. Scope
+2. Review Summary
+3. Edge Cases
+4. Added / Updated Tests
+5. Executed Test Cases (table: Test file, Scenario, Result, Notes)
+6. Scenario Coverage
+7. Command Evidence (table: Command, Exit code, Result, Output summary)
+8. Coverage Evidence
+9. Failures and Root Cause (omit if all passed)
+10. Recommendations
+11. Residual Risk
+
+## Evidence
+
+Never mark pass without command output in section 7.
+
+## Ownership
+
+`test-runner` owns reports. `doc-sync` links from SDD only.

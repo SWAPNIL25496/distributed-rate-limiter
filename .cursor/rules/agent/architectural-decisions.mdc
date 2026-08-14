@@ -1,0 +1,48 @@
+---
+description: When and how to record architectural decisions under docs/adr/
+globs:
+  - "docs/adr/**/*.md"
+---
+
+# Architectural Decision Records (ADRs)
+
+## Location
+
+**`docs/adr/NNNN-short-slug.md`**. One decision per file.
+
+## When to Write an ADR
+
+Durable, cross-cutting decisions: patterns, trade-offs, boundaries, stack choices, repo workflow.
+
+Do **not** write ADRs for one-off feature facts (use SDD / investigation / test reports).
+
+## Filename Convention
+
+```txt
+docs/adr/0001-short-slug.md
+```
+
+Supersede with a new higher number; set `Status: Superseded by NNNN` on the old file.
+
+## Required Sections
+
+1. **Title** — `# ADR NNNN: ...`
+2. **Status** — `Proposed` | `Accepted` | `Deprecated` | `Superseded by NNNN`
+3. **Context**
+4. **Decision**
+5. **Consequences**
+6. **Alternatives considered**
+
+## Agent Integration
+
+| Agent | ADR responsibility |
+|---|---|
+| `architect-planner` | Create/update ADRs; link from SDD |
+| `phase-executor` | Follow Accepted ADRs; do not edit ADRs |
+| `doc-sync` | Link only; do not invent decisions |
+| `rule-feedback-writer` | ADR when feedback is architectural |
+
+## Rules
+
+- No secrets/PII.
+- Prefer superseding over silently rewriting Accepted text.

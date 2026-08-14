@@ -1,0 +1,13 @@
+---
+description: Optional Cursor hooks that enforce doc-sync handoffs after execute and verify
+alwaysApply: false
+---
+
+# Workflow Hooks
+
+This repo may use `.cursor/hooks.json` to auto-continue with `doc-sync` after subagents stop.
+
+| After subagent | Next step |
+|----------------|-----------|
+| `phase-executor` | Invoke `doc-sync` (implementation sync) |
+| `test-runner` | Invoke `doc-sync` (verification sync) |

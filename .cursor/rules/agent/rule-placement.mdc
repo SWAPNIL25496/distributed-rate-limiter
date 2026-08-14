@@ -1,0 +1,16 @@
+---
+description: How to categorise and place .cursor/rules by agent, language, or framework
+alwaysApply: false
+---
+
+# Rule Placement and Categorisation
+
+## Layout
+
+| Category | Path | Use for |
+| --- | --- | --- |
+| Agent / workflow | `.cursor/rules/agent/<slug>.mdc` | Lifecycle, SDD/ADR/PR, doc-sync, reports |
+| Language | `.cursor/rules/language/<slug>.mdc` | Language idioms not tied to one framework |
+| Framework / runtime | `.cursor/rules/<framework-slug>/<slug>.mdc` | e.g. `spring-boot/` |
+
+Prefer the most specific category that still applies broadly. Extend existing files before adding new ones.

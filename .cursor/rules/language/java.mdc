@@ -1,0 +1,13 @@
+---
+description: Java language conventions for this repository
+globs:
+  - "**/*.java"
+---
+
+# Java conventions
+
+- Target **Java 25**; prefer modern APIs over legacy equivalents when clear.
+- Prefer immutability for value objects; avoid public mutable fields.
+- Use clear package-by-layer boundaries; do not put business logic in controllers.
+- Fail fast on invalid input at API boundaries with consistent error responses.
+- No secrets in source; use env / config.
