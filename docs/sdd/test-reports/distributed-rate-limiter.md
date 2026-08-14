@@ -29,3 +29,11 @@ Notes: ECS structured logging observed in test output. API-key filter covers 401
 | SlidingWindowEngineTest | **PASS** — 4 tests |
 
 Notes: Unit-level engine coverage; no Docker needed for this phase.
+
+## Phase 4 — Evaluate API + Lua (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — BUILD SUCCESS, 50 tests, 0 failures |
+| AC-3 / AC-4 evaluate API (MockMvc) | **PASS** — MockMvc coverage |
+| AC-5 / Lua parity EvaluateIT | **CI-pending** (no Docker in this container) |

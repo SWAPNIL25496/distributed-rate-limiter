@@ -676,7 +676,7 @@ sequenceDiagram
 | 1 | Scaffold Boot + Compose + Flyway + health + CI skeleton | Verified | - | Java 21 + Boot 4.0.7; 9 tests green; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md); Dockerfile/Compose/IT = CI-pending |
 | 2 | Rule CRUD + Postgres + Redis write-through cache | Verified | - | CRUD + Redis write-through; 25 tests green; ITs CI-pending; report test-reports/distributed-rate-limiter.md |
 | 3 | Pure algorithm engines + unit tests | Verified | - | pure TB+SW engines; 33 tests green; report: [`test-reports/distributed-rate-limiter.md`](test-reports/distributed-rate-limiter.md) |
-| 4 | Evaluate API + Lua + multi-replica path | Not Started | - | |
+| 4 | Evaluate API + Lua + multi-replica path | Verified | - | evaluate+Lua; 50 tests green; EvaluateIT CI-pending |
 | 5 | Observe API + concurrency/contention tests | Not Started | - | |
 | 6 | README / REFLECTION / architecture finalize / CI green | Not Started | - | Core docs; note Phases 7–9 upcoming |
 | 7 | Admin Thymeleaf UI + live quota utilization | Not Started | - | ADR 0007 |
