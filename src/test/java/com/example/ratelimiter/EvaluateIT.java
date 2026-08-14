@@ -117,8 +117,9 @@ class EvaluateIT {
                 .sql(
                         """
                         INSERT INTO rate_limit_rules
-                          (identifier, namespace, algorithm, burst_capacity, refill_per_second, enabled)
-                        VALUES (?, ?, ?, ?, ?, FALSE)
+                          (identifier, namespace, algorithm, burst_capacity, refill_per_second,
+                           enabled, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, FALSE, NOW(), NOW())
                         """)
                 .param(identifier)
                 .param("checkout")
@@ -191,8 +192,9 @@ class EvaluateIT {
                 .sql(
                         """
                         INSERT INTO rate_limit_rules
-                          (identifier, namespace, algorithm, burst_capacity, refill_per_second, enabled)
-                        VALUES (?, ?, ?, ?, ?, TRUE)
+                          (identifier, namespace, algorithm, burst_capacity, refill_per_second,
+                           enabled, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, TRUE, NOW(), NOW())
                         """)
                 .param(identifier)
                 .param(namespace)

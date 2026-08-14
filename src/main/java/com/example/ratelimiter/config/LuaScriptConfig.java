@@ -4,12 +4,17 @@ import com.example.ratelimiter.limiter.QuotaScriptExecutor;
 import com.example.ratelimiter.limiter.RedisQuotaScriptExecutor;
 import com.example.ratelimiter.limiter.UnavailableQuotaScriptExecutor;
 import java.time.Clock;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+/**
+ * Prefer Redis Lua when {@link StringRedisTemplate} exists. Avoid {@code @ConditionalOnBean}
+ * here — user {@code @Configuration} is processed before Redis auto-config, so that condition
+ * falsely picks the unavailable stub and breaks Failsafe ITs / production.
+ */
 @Configuration
 public class LuaScriptConfig {
 
@@ -20,14 +25,11 @@ public class LuaScriptConfig {
     }
 
     @Bean
-    @ConditionalOnBean(StringRedisTemplate.class)
-    QuotaScriptExecutor redisQuotaScriptExecutor(StringRedisTemplate redisTemplate) {
-        return new RedisQuotaScriptExecutor(redisTemplate);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(QuotaScriptExecutor.class)
-    QuotaScriptExecutor unavailableQuotaScriptExecutor() {
+    QuotaScriptExecutor quotaScriptExecutor(ObjectProvider<StringRedisTemplate> redisTemplate) {
+        StringRedisTemplate template = redisTemplate.getIfAvailable();
+        if (template != null) {
+            return new RedisQuotaScriptExecutor(template);
+        }
         return new UnavailableQuotaScriptExecutor();
     }
 }
