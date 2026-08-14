@@ -19,3 +19,13 @@ Notes: ECS structured logging observed in test output. API-key filter covers 401
 | `./mvnw test` | **PASS** — BUILD SUCCESS, 25 tests, 0 failures |
 | AC-2 rules API (MockMvc) | **PASS** — `RuleControllerTest` |
 | AC-1 Postgres→Redis write-through IT | **CI-pending** (no Docker in this container) |
+
+## Phase 3 — Rate engines (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — BUILD SUCCESS, 33 tests, 0 failures |
+| TokenBucketEngineTest | **PASS** — 4 tests |
+| SlidingWindowEngineTest | **PASS** — 4 tests |
+
+Notes: Unit-level engine coverage; no Docker needed for this phase.
