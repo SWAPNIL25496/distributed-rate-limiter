@@ -30,6 +30,22 @@ class LuaScriptLoadingTest {
         assertThat(script.getScriptAsString()).contains("current");
     }
 
+    @Test
+    void tokenBucketObserveScriptLoadsFromClasspath() {
+        DefaultRedisScript<?> script = load("lua/token_bucket_observe.lua");
+        assertThat(script.getScriptAsString()).contains("KEYS[1]");
+        assertThat(script.getScriptAsString()).doesNotContain("redis.call('HSET'");
+        assertThat(script.getScriptAsString()).contains("tokens");
+    }
+
+    @Test
+    void slidingWindowObserveScriptLoadsFromClasspath() {
+        DefaultRedisScript<?> script = load("lua/sliding_window_observe.lua");
+        assertThat(script.getScriptAsString()).contains("KEYS[1]");
+        assertThat(script.getScriptAsString()).doesNotContain("redis.call('HSET'");
+        assertThat(script.getScriptAsString()).contains("window_start");
+    }
+
     private static DefaultRedisScript<?> load(String path) {
         DefaultRedisScript<Object> script = new DefaultRedisScript<>();
         script.setResultType(Object.class);

@@ -37,3 +37,11 @@ Notes: Unit-level engine coverage; no Docker needed for this phase.
 | `./mvnw test` | **PASS** — BUILD SUCCESS, 50 tests, 0 failures |
 | AC-3 / AC-4 evaluate API (MockMvc) | **PASS** — MockMvc coverage |
 | AC-5 / Lua parity EvaluateIT | **CI-pending** (no Docker in this container) |
+
+## Phase 5 — Observe + concurrent evaluate (2026-08-14)
+
+| Check | Result |
+|-------|--------|
+| `./mvnw test` | **PASS** — BUILD SUCCESS, 57 tests, 0 failures |
+| Observe API (MockMvc) | **PASS** — `QuotaControllerTest` (5 tests) |
+| ConcurrentEvaluateIT | **CI-pending** (no Docker in this container) |

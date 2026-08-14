@@ -3,7 +3,7 @@ package com.example.ratelimiter.limiter;
 import java.time.Instant;
 
 /**
- * Stand-in when Redis is unavailable (Surefire unit profile). Evaluate requires Redis Lua.
+ * Stand-in when Redis is unavailable (Surefire unit profile). Evaluate/observe require Redis Lua.
  */
 public class UnavailableQuotaScriptExecutor implements QuotaScriptExecutor {
 
@@ -17,5 +17,17 @@ public class UnavailableQuotaScriptExecutor implements QuotaScriptExecutor {
     public RateLimitResult evaluateSlidingWindow(
             String key, int limit, int windowSeconds, Instant now) {
         throw new IllegalStateException("Redis Lua evaluate is unavailable in this profile");
+    }
+
+    @Override
+    public ObserveResult observeTokenBucket(
+            String key, int burstCapacity, double refillPerSecond, Instant now) {
+        throw new IllegalStateException("Redis Lua observe is unavailable in this profile");
+    }
+
+    @Override
+    public ObserveResult observeSlidingWindow(
+            String key, int limit, int windowSeconds, Instant now) {
+        throw new IllegalStateException("Redis Lua observe is unavailable in this profile");
     }
 }
